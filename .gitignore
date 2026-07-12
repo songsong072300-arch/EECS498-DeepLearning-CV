@@ -6,3 +6,7 @@ __pycache__/
 *.py[cod]
 .ipynb_checkpoints/
 .DS_Store
+
+# Datasets (large, re-downloadable)
+A1/cifar-10-python.tar.gz
+A1/cifar-10-batches-py/
