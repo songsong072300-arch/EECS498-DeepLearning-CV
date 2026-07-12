@@ -730,7 +730,13 @@ def challenge_get_uniques(x: torch.Tensor) -> Tuple[Tensor, Tensor]:
     # O(N) memory.                                                           #
     ##########################################################################
     # Replace "pass" statement with your code
-    pass
+    sorted_idx=torch.argsort(x,stable=True)
+    sorted_x=x[sorted_idx]
+    first=sorted_x[-1:]
+    rear=sorted_x[1:]
+    mask=torch.cat(True,(first!=rear))
+    uniques=sorted_x[mask]
+    indices=sorted_idx[mask]
     ##########################################################################
     #                            END OF YOUR CODE                            #
     ##########################################################################
