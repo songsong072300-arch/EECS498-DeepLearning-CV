@@ -9,6 +9,12 @@ from linear_classifier import sample_batch
 from typing import Dict, List, Callable, Optional
 
 
+def _resolve_device(device):
+    if device == "cuda" and not torch.cuda.is_available():
+        return "cpu"
+    return device
+
+
 def hello_two_layer_net():
     """
     This is a sample function that we will try to import and run to ensure that
@@ -49,6 +55,7 @@ class TwoLayerNet(object):
         # reset seed before start
         random.seed(0)
         torch.manual_seed(0)
+        device = _resolve_device(device)
 
         self.params = {}
         self.params["W1"] = std * torch.randn(

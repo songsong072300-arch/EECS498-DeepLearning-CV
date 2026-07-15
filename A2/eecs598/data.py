@@ -1,6 +1,9 @@
 import os
 import random
 
+os.environ.setdefault("MPLCONFIGDIR", os.path.join(os.getcwd(), ".cache", "matplotlib"))
+os.makedirs(os.environ["MPLCONFIGDIR"], exist_ok=True)
+
 import matplotlib.pyplot as plt
 import torch
 import torchvision
@@ -106,10 +109,13 @@ def preprocess_cifar10(
 
     # Move data to the GPU
     if cuda:
-        X_train = X_train.cuda()
-        y_train = y_train.cuda()
-        X_test = X_test.cuda()
-        y_test = y_test.cuda()
+        if torch.cuda.is_available():
+            X_train = X_train.cuda()
+            y_train = y_train.cuda()
+            X_test = X_test.cuda()
+            y_test = y_test.cuda()
+        else:
+            print("CUDA is not available; keeping CIFAR-10 tensors on CPU.")
 
     # 0. Visualize some examples from the dataset.
     if show_examples:

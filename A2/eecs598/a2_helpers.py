@@ -1,11 +1,22 @@
 """
 Helper functions used in Assignment 2
 """
+import os
 import torch
 import torchvision
+
+os.environ.setdefault("MPLCONFIGDIR", os.path.join(os.getcwd(), ".cache", "matplotlib"))
+os.makedirs(os.environ["MPLCONFIGDIR"], exist_ok=True)
+
 import matplotlib.pyplot as plt
 import random
 import math
+
+
+def _resolve_device(device):
+    if device == "cuda" and not torch.cuda.is_available():
+        return "cpu"
+    return device
 
 
 def hello_helper():
@@ -62,6 +73,7 @@ def get_toy_data(
     D = input_size
     H = hidden_size
     C = num_classes
+    device = _resolve_device(device)
 
     # We set the random seed for repeatable experiments.
     reset_seed(0)
