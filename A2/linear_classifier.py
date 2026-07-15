@@ -268,7 +268,7 @@ def sample_batch(
 ):
     """
     Sample batch_size elements from the training data and their
-    corresponding labels to use in this round of gradient descent.
+    corresponding labels to use in this round  of gradient descent.
     """
     X_batch = None
     y_batch = None

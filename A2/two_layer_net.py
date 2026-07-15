@@ -154,7 +154,9 @@ def nn_forward_pass(params: Dict[str, torch.Tensor], X: torch.Tensor):
     # shape (N, C).                                                            #
     ############################################################################
     # Replace "pass" statement with your code
-    pass
+    hidden = X.mm(W1)+b1
+    hidden = hidden*(hidden>0)
+    scores = hidden.mm(W2)+b2
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -219,7 +221,10 @@ def nn_forward_backward(
     # (Check Numeric Stability in http://cs231n.github.io/linear-classify/).   #
     ############################################################################
     # Replace "pass" statement with your code
-    pass
+    p = scores.exp() / scores.exp().sum(dim=1,keepdim=True)
+    loss = -p[torch.arange(N),y].log().sum()
+    loss /= N
+    loss += reg*((W1*W1).sum()+(W2*W2).sum())
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -233,7 +238,25 @@ def nn_forward_backward(
     # tensor of same size                                                     #
     ###########################################################################
     # Replace "pass" statement with your code
-    pass
+    z_1 = X.mm(W1) + b1
+    dz_2 = p
+    dz_2[torch.arange(N),y] -= 1
+    dh_1 = dz_2.mm(W2.t())
+    dw_2 = h1.t().mm(dz_2)
+    db_2 = dz_2.sum(dim=0)
+    dz_1 = dh_1*(z_1>0)
+    dw_1 = X.t().mm(dz_1)
+    db_1 = dz_1.sum(dim=0)
+    dw_1 /= N
+    dw_2 /= N
+    dw_1 += 2*reg*W1
+    dw_2 += 2*reg*W2
+    db_1 /= N
+    db_2 /= N
+    grads['W1'] = dw_1
+    grads['b1'] = db_1
+    grads['W2'] = dw_2
+    grads['b2'] = db_2
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -314,7 +337,12 @@ def nn_train(
         # stored in the grads dictionary defined above.                         #
         #########################################################################
         # Replace "pass" statement with your code
-        pass
+        W1, b1 = params["W1"], params["b1"]
+        W2, b2 = params["W2"], params["b2"]
+        W1 -= learning_rate*grads["W1"]
+        W2 -= learning_rate*grads["W2"]
+        b1 -= learning_rate*grads["b1"]
+        b2 -= learning_rate*grads["b2"]
         #########################################################################
         #                             END OF YOUR CODE                          #
         #########################################################################
@@ -372,7 +400,11 @@ def nn_predict(
     # TODO: Implement this function; it should be VERY simple!                #
     ###########################################################################
     # Replace "pass" statement with your code
-    pass
+    W1,b1,W2,b2 = params["W1"],params["b1"],params["W2"],params["b2"]
+    z1 = X.mm(W1)+b1
+    h1 = z1*(z1>0)
+    scores = h1.mm(W2)+b2
+    y_pred = torch.argmax(scores, dim=1)
     ###########################################################################
     #                              END OF YOUR CODE                           #
     ###########################################################################
@@ -406,7 +438,10 @@ def nn_get_search_params():
     # classifier.                                                             #
     ###########################################################################
     # Replace "pass" statement with your code
-    pass
+    learning_rates = [3e-4, 1e-3, 3e-3, 1e-2]
+    hidden_sizes = [32, 64, 128]
+    regularization_strengths = [1e-6, 1e-5, 1e-4, 1e-3]
+    learning_rate_decays = [0.95, 0.99]
     ###########################################################################
     #                           END OF YOUR CODE                              #
     ###########################################################################
@@ -419,6 +454,7 @@ def nn_get_search_params():
     )
 
 
+import itertools
 def find_best_net(
     data_dict: Dict[str, torch.Tensor], get_param_set_fn: Callable
 ):
@@ -467,7 +503,42 @@ def find_best_net(
     # automatically like we did on the previous exercises.                      #
     #############################################################################
     # Replace "pass" statement with your code
-    pass
+    X_train, y_train = data_dict['X_train'], data_dict['y_train']
+    X_val, y_val = data_dict['X_val'], data_dict['y_val']
+    N, D = X_train.shape
+    C = int(torch.max(y_train).item() + 1)
+    lr_list, hs_list, reg_list, decay_list = get_param_set_fn()
+    param_combinations = list(itertools.product(lr_list, hs_list, reg_list, decay_list))
+    total_comb = len(param_combinations)
+    for i, (lr, hs, reg, decay) in enumerate(param_combinations):
+        # 实例化一个新的二层神经网络
+        # 具体的实例化方式根据作业框架定义（这里假设为标准的作业接口形式）
+        # 传入输入维度 D，隐藏层维度 hs，输出类别数 C
+        net = TwoLayerNet(D, hs, C, dtype=X_train.dtype, device=str(X_train.device))
+
+        # 训练该网络
+        # 按照作业接口，通常需要传入：数据、验证数据、迭代次数、Batch大小、学习率、衰减率、正则化强度等
+        stats = net.train(
+            X_train, y_train, X_val, y_val,
+            learning_rate=lr,
+            learning_rate_decay=decay,
+            reg=reg,
+            num_iters=1500,     # 作业标准推荐迭代次数
+            batch_size=200,     # 作业标准推荐 batch size
+            verbose=False       # 网格搜索时关闭详细打印，避免终端被刷屏
+        )
+
+        # 用当前模型预测验证集，并计算准确率
+        y_val_pred = net.predict(X_val)
+        val_acc = torch.mean((y_val_pred == y_val).float()).item()
+
+        print(f"[{i+1}/{total_comb}] lr: {lr:.1e} | hs: {hs:3d} | reg: {reg:.1e} | decay: {decay:.2f} | 验证集准确率: {val_acc:.4f}")
+
+        # 如果当前模型的验证集表现比历史最好还要好，则记录下来
+        if val_acc > best_val_acc:
+            best_val_acc = val_acc
+            best_net = net
+            best_stat = stats
     #############################################################################
     #                               END OF YOUR CODE                            #
     #############################################################################
